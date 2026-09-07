@@ -182,10 +182,20 @@ if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc =
 
 async function fileToText(file){
   const name=file.name.toLowerCase();
-  if(name.endsWith('.pdf')) return await pdfToText(file);
-  if(name.endsWith('.xlsx')||name.endsWith('.xls')||name.endsWith('.csv')) return await sheetToText(file);
-  if(name.endsWith('.docx')) return await ooxmlToText(file,'word/document.xml','w:p');
-  if(name.endsWith('.pptx')) return await pptxToText(file);
+  if(name.endsWith('.pdf')){
+    if(!window.pdfjsLib) throw new Error('PDF 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.');
+    return await pdfToText(file);
+  }
+  if(name.endsWith('.xlsx')||name.endsWith('.xls')||name.endsWith('.csv')){
+    if(!window.XLSX) throw new Error('엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.');
+    return await sheetToText(file);
+  }
+  if(name.endsWith('.docx')||name.endsWith('.pptx')){
+    if(!window.JSZip) throw new Error('문서 압축 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.');
+    return name.endsWith('.docx')
+      ? await ooxmlToText(file,'word/document.xml','w:p')
+      : await pptxToText(file);
+  }
   return await file.text();
 }
 async function pdfToText(file){
@@ -249,7 +259,7 @@ async function pptxToText(file){
   return out.join('\n');
 }
 function xmlParas(xml,ptag){
-  const re=new RegExp('<'+ptag+'[ >][\s\S]*?</'+ptag+'>','g');
+  const re=new RegExp('<'+ptag+'[ >][\\s\\S]*?</'+ptag+'>','g');
   const paras=xml.match(re)||[];
   return paras.map(p=>{
     const ts=p.match(/<(?:w|a):t[^>]*>([\s\S]*?)<\/(?:w|a):t>/g)||[];
@@ -1523,6 +1533,12 @@ async function handleFiles(fileList){
   }
   $('#chips').innerHTML=chips.join('');
   RAW_TEXT=all;
+  if(!all.trim()){
+    busy(false);
+    logLine('<span class="warn">첨부 파일에서 텍스트를 읽지 못했습니다.</span> PDF·엑셀·문서 파일은 인터넷 연결과 지원 형식을 확인하세요.');
+    toast('첨부 파일 내용을 읽지 못했습니다.',4000);
+    return;
+  }
   const P=extractData(all);
   DOC=buildDoc(P);
   renderAll();
