@@ -3550,11 +3550,25 @@ function initScope() {
 async function handleFile(f) {
   if (!f) return;
   const name = f.name, ext = (name.split(".").pop() || "").toLowerCase();
+  const supported = ["xls", "xlsx", "xlsm", "xltx", "csv", "pdf", "docx", "html", "htm", "txt", "tsv"];
+  if (!supported.includes(ext)) {
+    toast("지원하지 않는 파일 형식입니다. XLS, XLSX, CSV, PDF, DOCX, HTML, TXT 파일을 올려 주세요.");
+    return;
+  }
   const prog = $("#prog"), bar = prog.querySelector("i");
   $("#dropState").textContent = "«" + name + "» 분석 중…";
   prog.classList.add("on"); bar.style.width = "8%";
   try {
-    if (typeof XLSX === "undefined") { toast("분석 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요."); return; }
+    const needsXlsx = ext !== "pdf";
+    if (needsXlsx && typeof XLSX === "undefined") {
+      throw new Error("스프레드시트 분석 라이브러리를 불러오지 못했습니다. GitHub Pages의 인터넷 연결을 확인해 주세요.");
+    }
+    if (ext === "pdf" && typeof pdfjsLib === "undefined") {
+      throw new Error("PDF 분석 라이브러리를 불러오지 못했습니다. GitHub Pages의 인터넷 연결을 확인해 주세요.");
+    }
+    if (ext === "docx" && typeof mammoth === "undefined") {
+      throw new Error("DOCX 분석 라이브러리를 불러오지 못했습니다. GitHub Pages의 인터넷 연결을 확인해 주세요.");
+    }
     bar.style.width = "20%";
     const { grid, how, gradeImg } = await fileToGrid(f, r => { bar.style.width = (20 + r * 55) + "%"; });
     bar.style.width = "82%";
