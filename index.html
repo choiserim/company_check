@@ -1570,6 +1570,18 @@ const DOM_DESC = {
 
 function buildIssues(d, m) {
   const co = d.co, I = [];
+  const primarySite = (d.sites || [])[0] || {};
+  const officers = d.officers || [];
+  const jointRepresentatives = officers.filter(o => /공동대표/.test(String(o[0] || "")));
+  const officerStructure = jointRepresentatives.length > 1
+    ? "공동대표이사 " + jointRepresentatives.length + "인"
+    : "등기임원 " + officers.length + "인";
+  const reportContext = [co.ksic, co.product]
+    .concat(co.purpose || [])
+    .concat((d.buyers || []).map(x => x.name))
+    .concat((d.sellers || []).map(x => x.name)).join(" ");
+  const foodBusiness = /식품|음식|음료|농산물|축산물|수산물|식료품|가공식품/.test(reportContext);
+  const largeRetailCounterparty = /대형|마트|백화점|홈쇼핑|쿠팡|농협|이마트|롯데|신세계|현대|GS/.test(reportContext);
   const add = o => I.push(o);
 
   /* ═══ 세무 ═══ */
@@ -1729,13 +1741,15 @@ function buildIssues(d, m) {
 
   add({
     dom: "노무", sev: "즉시",
-    title: "중대재해처벌법 적용 사업장 — 공동대표 3인 전원이 경영책임자",
-    finding: "상시근로자 5인 이상 사업장으로 중대재해처벌법이 전면 적용됩니다. 식품 도매업 특성상 상·하차, 지게차·운반, 냉동·냉장 창고 작업 등 재해 위험 공정이 존재하며, 공동대표이사 체제에서는 경영책임자 지위가 3인 모두에게 인정될 수 있어 개별 형사책임 범위 확정이 필요합니다.",
+    title: "중대재해처벌법 적용 사업장 — " + officerStructure + " 경영책임자 책임범위 점검",
+    finding: "상시근로자 5인 이상 사업장으로 중대재해처벌법이 전면 적용됩니다. 식품 도매업 특성상 상·하차, 지게차·운반, 냉동·냉장 창고 작업 등 재해 위험 공정이 존재하며, " + (jointRepresentatives.length > 1
+      ? "공동대표이사 체제에서는 경영책임자 지위가 " + jointRepresentatives.length + "인 모두에게 인정될 수 있어 개별 형사책임 범위 확정이 필요합니다."
+      : "대표자와 등기임원의 실제 업무분장에 따라 경영책임자별 형사책임 범위 확정이 필요합니다."),
     law: ["중대재해 처벌 등에 관한 법률 제2조 제9호(경영책임자등), 제4조(안전보건 확보의무)",
       "중대재해처벌법 제6조 — 사망 시 1년 이상 징역 또는 10억원 이하 벌금, 법인 50억원 이하 벌금",
       "중대재해처벌법 시행령 제4조 — 안전보건 목표·전담조직·유해위험요인 확인개선 절차·예산 편성 등 9대 의무",
       "산업안전보건법 제29조 — 안전보건교육, 제36조 — 위험성평가 실시 및 결과 기록 3년 보존"],
-    action: "① 안전보건 관리체계 구축(연간 목표·예산·점검주기 문서화) ② 위험성평가 실시 및 근로자 참여 기록 확보 ③ 도급·용역·위탁 시 수급인 안전보건 확보 능력 평가기준 마련 ④ 공동대표 간 안전보건 업무분장을 이사회 의사록으로 명확화 ⑤ 반기 1회 이상 이행 점검 및 보고",
+    action: "① 안전보건 관리체계 구축(연간 목표·예산·점검주기 문서화) ② 위험성평가 실시 및 근로자 참여 기록 확보 ③ 도급·용역·위탁 시 수급인 안전보건 확보 능력 평가기준 마련 ④ " + (jointRepresentatives.length > 1 ? "공동대표 간" : "임원별") + " 안전보건 업무분장을 이사회 의사록으로 명확화 ⑤ 반기 1회 이상 이행 점검 및 보고",
     effect: "중대재해 발생 시 경영책임자 형사책임 방어 근거 확보, 산업안전보건법 과태료 예방"
   });
 
@@ -1794,9 +1808,9 @@ function buildIssues(d, m) {
   });
 
   /* ═══ 법무 ═══ */
-  if (/공동대표/.test(co.ceoNote || "")) add({
+  if (jointRepresentatives.length > 1) add({
     dom: "법무", sev: "즉시",
-    title: "공동대표이사 3인 체제 — 단독 대표행위의 효력 리스크",
+    title: "공동대표이사 " + jointRepresentatives.length + "인 체제 — 단독 대표행위의 효력 리스크",
     finding: esc(co.ceoNote) + " 체제가 등기되어 있습니다. 등기상 '공동대표'인 경우 대표이사 1인이 단독으로 체결한 계약은 원칙적으로 회사에 효력이 없어, 거래처 계약·금융거래·보증 실행 과정에서 무효 주장 또는 실무 지연이 발생할 수 있습니다. 반대로 각자대표라면 1인의 단독 행위로 회사가 구속되므로 내부 통제 장치가 필요합니다.",
     law: ["상법 제389조 제2항 — 공동대표이사, 제3항(제209조 제2항 준용) — 선의의 제3자 보호",
       "상법 제317조 제2항 제10호 — 공동대표 규정의 등기사항",
@@ -1883,7 +1897,7 @@ function buildIssues(d, m) {
     effect: "회수기간 단축을 통한 운전자본 개선, 시효 완성에 따른 채권 소멸 방지, 대손세액공제 확보"
   });
 
-  add({
+  if (largeRetailCounterparty) add({
     dom: "법무", sev: "중기",
     title: "대규모유통업자 납품거래 — 서면 교부 및 대금지급 기한 점검",
     finding: "주요 판매처에 농협 계열 대형 소매점 등이 포함되어 있습니다. 거래상대방이 대규모유통업법상 대규모유통업자에 해당하면 계약서면 교부, 직매입 대금 60일 이내 지급, 부당 반품·감액·판촉비 전가 금지 등 보호 규정을 원용할 수 있습니다.",
@@ -1896,7 +1910,7 @@ function buildIssues(d, m) {
     effect: "대금 회수 지연·부당 감액에 대한 법적 대응 근거 확보, 거래조건 협상력 제고"
   });
 
-  add({
+  if (foodBusiness) add({
     dom: "법무", sev: "중기",
     title: "식품 유통업 인허가 및 표시·광고 규제 준수",
     finding: "주요 취급 품목이 " + esc(co.product) + "으로 식품위생법상 영업신고(식품소분·판매업) 및 위생교육 의무가 적용됩니다. 온라인 판매·자체 브랜드(PB) 확대 시 식품 표시·광고 규제 위반 리스크가 급격히 커집니다.",
@@ -1910,7 +1924,7 @@ function buildIssues(d, m) {
   });
 
   /* ═══ 보험 ═══ */
-  add({
+  if (foodBusiness) add({
     dom: "보험", sev: "즉시",
     title: "생산물배상책임보험(PL) — 식품 유통업 필수 담보",
     finding: "매출 " + eok(m.rev) + " 규모의 가공식품 유통업으로, 판매한 식품으로 인한 신체·재산 손해가 발생하면 제조업자를 알 수 없는 경우 공급업자인 당사가 직접 손해배상책임을 부담합니다. 식중독·이물혼입은 단일 사고로도 회수(리콜) 비용과 배상액이 자기자본 " + eok(m.equity) + " 규모를 위협할 수 있습니다.",
@@ -1923,12 +1937,12 @@ function buildIssues(d, m) {
     effect: "단일 사고로 인한 자본 잠식 리스크 이전, 대형 유통사 납품 시 요구되는 보험증권 요건 충족"
   });
 
-  add({
+  if ((d.sites || []).some(s => !s.owned)) add({
     dom: "보험", sev: "단기",
     title: "임차 사업장 화재·재고 담보 — 재고자산 " + baekman(m.inv) + " 및 임차자배상책임",
     finding: "본사 사업장이 임차 물건이며 재고자산이 " + baekman(m.inv) + " 계상되어 있습니다. 임차인은 화재 시 임대인에 대한 원상회복·손해배상 책임을 지므로, 건물 소유자의 화재보험만으로는 임차인 자신의 책임과 재고 손해가 담보되지 않습니다.",
     calc: [
-      "재고자산 " + baekman(m.inv) + " · 유형자산 " + baekman(last(d.bs["유형자산"])) + " · 임차보증금 " + man((d.sites[0] || {}).deposit || 0),
+      "재고자산 " + baekman(m.inv) + " · 유형자산 " + baekman(last(d.bs["유형자산"])) + " · 임차보증금 " + man(primarySite.deposit || 0),
       "직전 결산기 보험료 총액 " + nf(m.insurance) + "천원 (매출액 대비 " + pct(m.insurance / m.rev * 100, 2) + ")"
     ],
     law: ["실화책임에 관한 법률 제3조 — 실화자의 경과실 시 손해배상액 경감청구",
@@ -1953,13 +1967,13 @@ function buildIssues(d, m) {
 
   add({
     dom: "보험", sev: "중기",
-    title: "임원배상책임보험(D&O) — 공동대표 3인 및 중대재해 리스크 연계",
+    title: "임원배상책임보험(D&O) — " + officerStructure + " 및 중대재해 리스크 연계",
     finding: "등기임원 " + (d.officers || []).length + "인 체제이며 특수관계 거래와 중대재해처벌법 적용이 겹쳐 임원 개인의 법적 책임 노출이 큽니다. 회사가 임원의 방어비용을 임의로 부담하면 배임 논란과 손금부인 문제가 생길 수 있어 보험을 통한 이전이 안전합니다.",
     law: ["상법 제399조 — 이사의 회사에 대한 손해배상책임, 제401조 — 제3자에 대한 책임",
       "상법 제400조 제2항 — 정관에 의한 이사 책임 감면(최근 1년 보수의 6배 한도)",
       "상법 제403조 — 주주대표소송",
       "중대재해처벌법 제6조·제7조 — 경영책임자 및 법인의 형사책임(벌금은 보험 담보 불가)"],
-    action: "① D&O 보험 가입(방어비용 담보 중심, 형사 벌금은 담보 불가함을 인지) ② 정관에 상법 제400조 제2항에 따른 이사 책임 감면 조항 도입 ③ 이사회 의사록·품의서 등 의사결정 근거 문서화(경영판단원칙 방어) ④ 공동대표 간 업무분장 규정 정비",
+    action: "① D&O 보험 가입(방어비용 담보 중심, 형사 벌금은 담보 불가함을 인지) ② 정관에 상법 제400조 제2항에 따른 이사 책임 감면 조항 도입 ③ 이사회 의사록·품의서 등 의사결정 근거 문서화(경영판단원칙 방어) ④ " + (jointRepresentatives.length > 1 ? "공동대표 간" : "임원별") + " 업무분장 규정 정비",
     effect: "임원 개인 자산에 대한 소송 리스크 이전, 방어비용의 적법한 재원 확보"
   });
 
@@ -2017,7 +2031,7 @@ function buildIssues(d, m) {
     effect: "정책자금 금리 우대 및 보증한도 확대, 공공입찰 신인도 가점, 후속 벤처·이노비즈 인증의 발판"
   });
 
-  add({
+  if (foodBusiness) add({
     dom: "인증", sev: "중기",
     title: "벤처기업 확인 — 혁신성장유형 또는 연구개발유형 경로 설계",
     finding: "현재 벤처기업 확인을 받지 않았고 연구개발비 지출이 매출액 대비 " + pct(m.rdRatio, 2) + "로 확인됩니다. 벤처기업 확인은 벤처투자·연구개발·혁신성장의 3개 유형이 있으며, 연구개발유형은 연구개발비 요건(직전 사업연도 5천만원 이상 및 매출액 대비 일정 비율)을 충족해야 하므로 현 상태에서는 기술·사업성 평가를 거치는 혁신성장유형이 현실적입니다.",
@@ -2060,7 +2074,7 @@ function buildIssues(d, m) {
     effect: "지원사업·세액감면 신청 자격 상시 유지, 규모 판정 오류로 인한 감면 부인 방지"
   });
 
-  add({
+  if (foodBusiness) add({
     dom: "인증", sev: "중기",
     title: "식품 유통 품질경영체계 인증 — 대형 거래처 납품 요건 선제 대응",
     finding: "농협 하나로마트 등 대형 유통 채널 납품 비중이 확대될수록 협력업체 품질·위생 심사 요건이 강화됩니다. 도매·유통업은 HACCP 의무 대상이 아니지만, ISO 9001 또는 식품 취급 위생관리 체계를 갖추면 신규 채널 진입과 입찰 평가에서 실질적 이점이 있습니다.",
@@ -4243,21 +4257,24 @@ function applyParsed(p, filename, how, gradeImg) {
 
 /* ══════════════ 저장 · 폼 ══════════════ */
 const SCHEMA = 4;
+function defaultUser() {
+  return {
+    meetdate: "", advisor: "", contact: "", client: "", purpose: "",
+    notes: { s1: "", s2: "", s3: "", s4: "", s5: "" },
+    scope: { s1: true, s2: true, s3: true, s4: true, s5: true },
+    optDetail: true, uploaded: "", creditGrade: ""
+  };
+}
+function resetToSeed(persist) {
+  D = deepCopy(SEED);
+  USER = defaultUser();
+  LASTPARSE = null; LASTMETA = null;
+  if (persist) saveLocal();
+}
 function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify({ ver: SCHEMA, D, USER })); } catch (e) { } }
 function loadLocal() {
-  try {
-    const s = localStorage.getItem(LS_KEY); if (!s) return;
-    const o = JSON.parse(s);
-    if (!o || o.ver !== SCHEMA) {
-      if (o && o.USER) { USER = Object.assign(USER, o.USER); USER.uploaded = ""; }
-      try { localStorage.removeItem(LS_KEY); } catch (e2) { }
-      if (o && o.D && o.D.co && o.D.co.name) setTimeout(() =>
-        toast("구성이 업데이트되어 이전에 저장된 «" + o.D.co.name + "» 결과를 초기화했습니다. 파일을 다시 업로드해 주세요."), 700);
-      return;
-    }
-    if (o.D && o.D.co && o.D.years) D = o.D;
-    if (o.USER) USER = Object.assign(USER, o.USER);
-  } catch (e) { }
+  resetToSeed(false);
+  try { localStorage.removeItem(LS_KEY); } catch (e) { }
 }
 function bindUserToForm() {
   const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v === undefined || v === null ? "" : v; };
@@ -4439,14 +4456,8 @@ function init() {
   $("#btnApply").addEventListener("click", () => { readForm(); rebuild(); saveLocal(); openDrawer(false); toast("요청사항을 브리핑에 반영했습니다."); });
   $("#btnReset").addEventListener("click", () => {
     if (!confirm("기본 예시 데이터로 초기화할까요? 업로드한 내용과 입력한 요청사항이 지워집니다.")) return;
-    D = deepCopy(SEED);
-    USER = {
-      meetdate: "", advisor: "", contact: "", client: "", purpose: "",
-      notes: { s1: "", s2: "", s3: "", s4: "", s5: "" },
-      scope: { s1: true, s2: true, s3: true, s4: true, s5: true }, optDetail: true, uploaded: "", creditGrade: ""
-    };
-    LASTPARSE = null; LASTMETA = null;
-    bindUserToForm(); initScope(); rebuild(); saveLocal(); toast("기본 예시 데이터로 초기화했습니다.");
+    resetToSeed(true);
+    bindUserToForm(); initScope(); rebuild(); toast("기본 예시 데이터로 초기화했습니다.");
   });
   $("#btnNav").addEventListener("click", () => $("#nav").classList.toggle("open"));
 
